@@ -1,6 +1,4 @@
-﻿using System.Collections;
-
-namespace Generics;
+﻿namespace Generics;
 
 public class Person
 {
@@ -32,96 +30,153 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        //TryCatchExample.Run();
+        // TryCatchExample.Run();
+        // TypeCastingExample.Run();
 
-        IObject obj = new SimpleObject();
-        CastUsingIsOperator(obj);
+        var collection = new Account[] { new Account(1) { Balance = 1000 }, new Account(2) { Balance = 20 } };
 
-        var customer = new Customer();
-        var employee = new Employee();
-
-        DisplayWithCast(employee);
-        try
-        {
-            DisplayWithCast(customer);
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-        }
-
-        DisplayWithAsOperator(employee);
-        DisplayWithAsOperator(customer);
-
-        ArrayList collection = new ArrayList { 1, "2", 3, 4 };
-
-        // var numbers = new List<int>() { 1, "2", 3, 4 }; // არ დაკომპილირდება
-        var numbers = new List<int>() { 1, 3, 4 };
-        Sum(numbers);
-
-        var sum = Sum(collection);
+        var index = IndexOf(collection, new Account(2) { Balance = 1000 }, new AccountBalanceComparer());
+        index = IndexOf(collection, new Account(2), new AccountIdComparer());
     }
 
-    private static int Sum(List<int> numbers)
+    public static int IndexOf<T>(IList<T> collection, T value) where T : IEquatable<T>
     {
-        int sum = 0;
-
-        for (int i = 0; i < numbers.Count; i++)
+        for (int i = 0; i < collection.Count; i++)
         {
-            var number = numbers[i];
-            sum += number;
-        }
-
-        return sum;
-    }
-
-    private static int Sum(ArrayList numbers)
-    {
-        int sum = 0;
-
-        for (int i = 0; i < numbers.Count; i++)
-        {
-            if (numbers[i] is int number)
+            if (collection[i].Equals(value))
             {
-                sum += number;
+                return i;
             }
         }
 
-        return sum;
+        return -1;
     }
 
-    private static void CastUsingIsOperator(IObject obj)
+    public static int IndexOf<T>(IList<T> collection, T value, IEqualityComparer<T> comparer) where T : IEquatable<T>
     {
-        if (obj is SimpleObject casted)
+        for (int i = 0; i < collection.Count; i++)
         {
-            Console.WriteLine(casted.Id);
+            if (comparer.Equals(collection[i], value))
+            {
+                return i;
+            }
         }
+
+        return -1;
+    }
+}
+
+public interface IDatabaseWritable<TId> where TId : IComparable<TId>
+{
+    void WriteInDb(TId id);
+}
+
+public abstract class DomainObject<TId> : IDatabaseWritable<TId>
+    where TId : IComparable<TId>
+{
+    public TId Id { get; set; }
+
+    public abstract void WriteInDb(TId id);
+}
+
+public class Account : DomainObject<int>, IEquatable<Account>
+{
+    public Account(int id)
+    {
+        Id = id;
     }
 
-    public static void DisplayWithCast(Person person)
-    {
-        Console.WriteLine(person.PersonalNumber);
+    public decimal Balance { get; set; }
 
-        var employee = (Employee)person; //  Type casting (Down cast)
-        Console.WriteLine(employee.Salary);
+    public override void WriteInDb(int id)
+    {
+        throw new NotImplementedException();
     }
 
-    public static void DisplayWithAsOperator(Person person)
+    public bool Equals(Account? other)
     {
-        Console.WriteLine(person.PersonalNumber);
+        if (other == null)
+            return false;
 
-        var employee = person as Employee; //  Type casting (Down cast)
-        Console.WriteLine($"Employee salary: {employee?.Salary}");
+        return Id.Equals(other.Id);
     }
 
-    public static void DisplayWithIsOperator(Person person)
+    public override bool Equals(object? obj)
     {
-        Console.WriteLine(person.PersonalNumber);
+        if (obj is null) return false;
+        if (ReferenceEquals(this, obj)) return true;
+        if (obj.GetType() != GetType()) return false;
+        return Equals((Account)obj);
+    }
 
-        //  Type casting (Down cast)
-        if (person is Employee employee)
-        {
-            Console.WriteLine($"Employee salary: {employee.Salary}");
-        }
+    public override int GetHashCode()
+    {
+        throw new NotImplementedException();
+    }
+}
+
+public class Transaction : DomainObject<long>
+{
+    public Transaction(long id)
+    {
+        Id = id;
+    }
+
+    public override void WriteInDb(long id)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+public class AccountIdComparer : IComparer<Account>, IEqualityComparer<Account>
+{
+    public int Compare(Account? x, Account? y)
+    {
+        if (ReferenceEquals(x, y)) return 0;
+        if (y is null) return 1;
+        if (x is null) return -1;
+
+        return x.Id.CompareTo(y.Id);
+    }
+
+    public bool Equals(Account? x, Account? y)
+    {
+        if (ReferenceEquals(x, y)) return true;
+        if (x is null) return false;
+        if (y is null) return false;
+        if (x.GetType() != y.GetType()) return false;
+        return x.Id == y.Id;
+    }
+
+    public int GetHashCode(Account obj)
+    {
+        return HashCode.Combine(obj.Id, obj.Balance);
+    }
+}
+
+public class AccountBalanceComparer : IComparer<Account>, IEqualityComparer<Account>
+{
+    public int Compare(Account? x, Account? y)
+    {
+        if (ReferenceEquals(x, y)) return 0;
+        if (y is null) return 1;
+        if (x is null) return -1;
+
+        return x.Balance.CompareTo(y.Balance);
+    }
+
+    public bool Equals(Account? x, Account? y)
+    {
+        if (ReferenceEquals(x, y)) return true;
+        if (x is null) return false;
+        if (y is null) return false;
+        if (x.GetType() != y.GetType()) return false;
+
+        return x.Balance == y.Balance;
+    }
+
+    public int GetHashCode(Account obj)
+    {
+        return HashCode.Combine(obj.Id, obj.Balance);
     }
 }
